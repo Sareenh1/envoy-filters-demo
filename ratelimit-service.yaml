@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ratelimit-config
+data:
+  config.yaml: |
+    domain: my-ratelimit
+    descriptors:
+      - key: PATH
+        value: "/api/v1/data"
+        rate_limit:
+          unit: minute
+          requests_per_unit: 3
+      - key: PATH
+        value: "/api/v1/info"
+        rate_limit:
+          unit: minute
+          requests_per_unit: 10
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ratelimit
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ratelimit
+  template:
+    metadata:
+      labels:
+        app: ratelimit
+    spec:
+      containers:
+      - name: ratelimit
+        image: envoyproxy/ratelimit:latest
+        ports:
+        - containerPort: 8080
+        - containerPort: 8081
+        volumeMounts:
+        - name: ratelimit-config
+          mountPath: /data/ratelimit/config
+        command: ["/bin/ratelimit"]
+        args: ["-config", "/data/ratelimit/config/config.yaml", "-log-level", "debug"]
+      volumes:
+        - name: ratelimit-config
+          configMap:
+            name: ratelimit-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ratelimit-service
+spec:
+  selector:
+    app: ratelimit
+  ports:
+  - port: 8080
+    targetPort: 8080
+    name: http
+  - port: 8081
+    targetPort: 8081
+    name: grpc
