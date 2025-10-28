@@ -1,0 +1,30 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: ratelimit-route-config
+spec:
+  workloadSelector:
+    labels:
+      istio: ingressgateway
+  configPatches:
+  - applyTo: VIRTUAL_HOST
+    match:
+      context: GATEWAY
+      routeConfiguration:
+        vhost:
+          name: "*:80"
+    patch:
+      operation: MERGE
+      value:
+        rate_limits:
+          - actions:
+            - header_value_match:
+                descriptor_key: "PATH"
+                headers:
+                - name: "x-ratelimit-path"
+                  exact_match: "/api/v1/data"
+            - header_value_match:
+                descriptor_key: "PATH" 
+                headers:
+                - name: "x-ratelimit-path"
+                  exact_match: "/api/v1/info"
