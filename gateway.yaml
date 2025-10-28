@@ -1,0 +1,57 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: demo-gateway
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "*"
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: demo-vs
+spec:
+  hosts:
+  - "*"
+  gateways:
+  - demo-gateway
+  http:
+  - match:
+    - uri:
+        exact: /api/v1/data
+    route:
+    - destination:
+        host: demo-app.default.svc.cluster.local
+        port:
+          number: 80
+    headers:
+      request:
+        set:
+          x-ratelimit-path: "/api/v1/data"
+  - match:
+    - uri:
+        exact: /api/v1/info
+    route:
+    - destination:
+        host: demo-app.default.svc.cluster.local
+        port:
+          number: 80
+    headers:
+      request:
+        set:
+          x-ratelimit-path: "/api/v1/info"
+  - match:
+    - uri:
+        prefix: /
+    route:
+    - destination:
+        host: demo-app.default.svc.cluster.local
+        port:
+          number: 80
